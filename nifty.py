@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import r2_score
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from xgboost import XGBRegressor
 
@@ -90,10 +90,8 @@ xgb_preds = xgb_model.predict(X_test)
 rf_r2 = r2_score(y_test, rf_preds)
 xgb_r2 = r2_score(y_test, xgb_preds)
 
-rf_rmse = np.sqrt(mean_squared_error(y_test, rf_preds))
-xgb_rmse = np.sqrt(mean_squared_error(y_test, xgb_preds))
+# ---------------------- Predict full dataset with XGBoost -------------------------
 
-# Predict full dataset with XGBoost
 df['Predicted_Close'] = xgb_model.predict(X_scaled)
 
 # ---------------------- Streamlit Dashboard -----------------------
@@ -113,9 +111,7 @@ st.dataframe(df_selected[['Date', 'Close', 'Predicted_Close']].sort_values('Date
 st.markdown("### 🔍 Model Evaluation (on Test Set)")
 st.write({
     "Random Forest R²": round(rf_r2, 4),
-    "Random Forest RMSE": round(rf_rmse, 4),
     "XGBoost R²": round(xgb_r2, 4),
-    "XGBoost RMSE": round(xgb_rmse, 4),
 })
 
 # ---------------------- Display Parameters -----------------------
@@ -153,4 +149,3 @@ ax.set_title(f"{selected_symbol} - Close Price Trend")
 ax.legend()
 fig.autofmt_xdate()
 st.pyplot(fig)
-
