@@ -4,12 +4,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import r2_score
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.metrics import r2_score
 from xgboost import XGBRegressor
 
-# ---------------------- Technical Indicator Functions ------------------
+# ------------------- Technical Indicator Functions -------------------
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
@@ -18,7 +19,8 @@ def calculate_rsi(series, period=14):
     avg_gain = gain.rolling(window=period).mean()
     avg_loss = loss.rolling(window=period).mean()
     rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
 
 def calculate_macd(series, fast=12, slow=26, signal=9):
     ema_fast = series.ewm(span=fast, min_periods=1).mean()
@@ -27,123 +29,110 @@ def calculate_macd(series, fast=12, slow=26, signal=9):
     signal_line = macd_line.ewm(span=signal, min_periods=1).mean()
     return macd_line - signal_line
 
-# ---------------------- Load & Preprocess Data ------------------
+# ------------------- Load Data -------------------
 
 df = pd.read_csv("Nifty_Stocks.csv")
 df['Date'] = pd.to_datetime(df['Date'])
 
-df['Daily_Return'] = df['Close'].pct_change()
-df['SMA_50'] = df['Close'].rolling(window=50).mean()
-df['SMA_200'] = df['Close'].rolling(window=200).mean()
-df['Volatility'] = df['Daily_Return'].rolling(window=14).std()
-df['RSI'] = calculate_rsi(df['Close'])
-df['MACD'] = calculate_macd(df['Close'])
+# Sort data by Symbol and Date to maintain time order
+df = df.sort_values(['Symbol', 'Date']).reset_index(drop=True)
 
-df = df.dropna()
+# ------------------- Feature Engineering -------------------
 
-label = LabelEncoder()
-df['Symbol'] = df['Symbol'].astype(str)
-df['Symbol_enc'] = label.fit_transform(df['Symbol'])
+# Calculate SMA_50 and SMA_200 per symbol
+df['SMA_50'] = df.groupby('Symbol')['Close'].transform(lambda x: x.rolling(window=50).mean())
+df['SMA_200'] = df.groupby('Symbol')['Close'].transform(lambda x: x.rolling(window=200).mean())
 
-if 'Category' in df.columns:
-    df['Category'] = df['Category'].astype(str)
-    df['Category_enc'] = label.fit_transform(df['Category'])
+# RSI and MACD per symbol
+df['RSI'] = df.groupby('Symbol')['Close'].transform(calculate_rsi)
+df['MACD'] = df.groupby('Symbol')['Close'].transform(calculate_macd)
 
-features = ['Open', 'High', 'Low', 'SMA_50', 'SMA_200', 'RSI', 'MACD', 'Volatility']
+# Fill NaN after rolling calculations
+df = df.dropna().reset_index(drop=True)
+
+# Encode categorical columns
+le_symbol = LabelEncoder()
+df['Symbol_enc'] = le_symbol.fit_transform(df['Symbol'].astype(str))
+
+le_category = LabelEncoder()
+df['Category_enc'] = le_category.fit_transform(df['Category'].astype(str))
+
+# ------------------- Prepare Data for ML -------------------
+
+features = [
+    'Open', 'High', 'Low',
+    'SMA_50', 'SMA_200',
+    'RSI', 'MACD',
+    'Volatility',
+    'Symbol_enc',
+    'Category_enc'
+]
+
 X = df[features]
 y = df['Close']
 
+# Scale features
 scaler = MinMaxScaler()
 X_scaled = scaler.fit_transform(X)
 
+# Split data: stratify by symbol not needed here, but random_state for reproducibility
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
-# ---------------------- Train Models ----------------------------
+# ------------------- Train Models -------------------
 
-rf_model = RandomForestRegressor(
-    n_estimators=100,
-    max_depth=None,
-    min_samples_split=2,
-    min_samples_leaf=1,
-    random_state=42
-)
+# Linear Regression baseline
+lr_model = LinearRegression()
+lr_model.fit(X_train, y_train)
 
-xgb_model = XGBRegressor(
-    n_estimators=100,
-    learning_rate=0.1,
-    max_depth=3,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    objective='reg:squarederror',
-    random_state=42
-)
-
+# Random Forest
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
 rf_model.fit(X_train, y_train)
+
+# XGBoost
+xgb_model = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42, objective='reg:squarederror')
 xgb_model.fit(X_train, y_train)
 
-# ---------------------- Evaluate Models -------------------------
+# ------------------- Predict & Evaluate -------------------
 
+lr_preds = lr_model.predict(X_test)
 rf_preds = rf_model.predict(X_test)
 xgb_preds = xgb_model.predict(X_test)
 
+# Calculate R2 scores only
+lr_r2 = r2_score(y_test, lr_preds)
 rf_r2 = r2_score(y_test, rf_preds)
 xgb_r2 = r2_score(y_test, xgb_preds)
 
-# ---------------------- Predict full dataset with XGBoost -------------------------
-
+# Predict full dataset close price with XGBoost for visualization
 df['Predicted_Close'] = xgb_model.predict(X_scaled)
 
-# ---------------------- Streamlit Dashboard -----------------------
+# ------------------- Streamlit Dashboard -------------------
 
 st.set_page_config(layout="wide")
-st.title("📈 Stock Price Prediction Dashboard")
+st.title("📊 Stock Price Prediction Dashboard")
 
-selected_symbol = st.sidebar.selectbox("Select a Stock Symbol", sorted(df['Symbol'].unique()))
-df_selected = df[df['Symbol'] == selected_symbol]
+selected_symbol = st.sidebar.selectbox("Select Stock Symbol", sorted(df['Symbol'].unique()))
 
-st.subheader(f"Predicted vs Actual Close Prices for {selected_symbol}")
-st.dataframe(df_selected[['Date', 'Close', 'Predicted_Close']].sort_values('Date', ascending=False).head(10))
+df_symbol = df[df['Symbol'] == selected_symbol].sort_values('Date')
 
-# ---------------------- Metrics -----------------------
+st.subheader(f"Close Price: Actual vs Predicted ({selected_symbol})")
+st.dataframe(df_symbol[['Date', 'Close', 'Predicted_Close']].tail(10))
 
-st.markdown("### 🔍 Model Evaluation (R² Score Only)")
+# Show model performance
+st.markdown("### Model Performance (R² on Test Set)")
 st.write({
+    "Linear Regression R²": round(lr_r2, 4),
     "Random Forest R²": round(rf_r2, 4),
     "XGBoost R²": round(xgb_r2, 4),
 })
 
-# ---------------------- Display Parameters -----------------------
-
-st.markdown("### ⚙️ Model Parameters")
-
-st.subheader("🔹 Random Forest Parameters")
-st.json({
-    "n_estimators": 100,
-    "max_depth": None,
-    "min_samples_split": 2,
-    "min_samples_leaf": 1,
-    "random_state": 42
-})
-
-st.subheader("🔹 XGBoost Parameters")
-st.json({
-    "n_estimators": 100,
-    "learning_rate": 0.1,
-    "max_depth": 3,
-    "subsample": 0.8,
-    "colsample_bytree": 0.8,
-    "objective": "reg:squarederror",
-    "random_state": 42
-})
-
-# ---------------------- Plot -----------------------
-
-fig, ax = plt.subplots(figsize=(10, 4))
-ax.plot(df_selected['Date'], df_selected['Close'], label="Actual Close", color="blue")
-ax.plot(df_selected['Date'], df_selected['Predicted_Close'], label="Predicted Close (XGBoost)", color="orange")
+# Plot actual vs predicted
+fig, ax = plt.subplots(figsize=(12, 5))
+ax.plot(df_symbol['Date'], df_symbol['Close'], label='Actual Close', color='blue')
+ax.plot(df_symbol['Date'], df_symbol['Predicted_Close'], label='Predicted Close (XGBoost)', color='orange')
 ax.set_xlabel("Date")
 ax.set_ylabel("Price")
-ax.set_title(f"{selected_symbol} - Close Price Trend")
+ax.set_title(f"{selected_symbol} Close Price Prediction")
 ax.legend()
 plt.xticks(rotation=45)
 st.pyplot(fig)
