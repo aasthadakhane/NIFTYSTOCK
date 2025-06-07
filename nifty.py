@@ -89,8 +89,8 @@ xgb_preds = xgb_model.predict(X_test)
 rf_r2 = r2_score(y_test, rf_preds)
 xgb_r2 = r2_score(y_test, xgb_preds)
 
-rf_rmse = mean_squared_error(y_test, rf_preds, squared=False)
-xgb_rmse = mean_squared_error(y_test, xgb_preds, squared=False)
+rf_rmse = mean_squared_error(y_test, rf_preds, squared=False if 'squared' in mean_squared_error.__code__.co_varnames else True) ** 0.5
+xgb_rmse = mean_squared_error(y_test, xgb_preds, squared=False if 'squared' in mean_squared_error.__code__.co_varnames else True) ** 0.5
 
 # Predict full dataset with XGBoost
 df['Predicted_Close'] = xgb_model.predict(X_scaled)
