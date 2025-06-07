@@ -90,8 +90,8 @@ xgb_preds = xgb_model.predict(X_test)
 rf_r2 = r2_score(y_test, rf_preds)
 xgb_r2 = r2_score(y_test, xgb_preds)
 
-rf_rmse = mean_squared_error(y_test, rf_preds, squared=False)
-xgb_rmse = mean_squared_error(y_test, xgb_preds, squared=False)
+rf_rmse = np.sqrt(mean_squared_error(y_test, rf_preds))
+xgb_rmse = np.sqrt(mean_squared_error(y_test, xgb_preds))
 
 # Predict full dataset with XGBoost
 df['Predicted_Close'] = xgb_model.predict(X_scaled)
@@ -153,3 +153,4 @@ ax.set_title(f"{selected_symbol} - Close Price Trend")
 ax.legend()
 fig.autofmt_xdate()
 st.pyplot(fig)
+
