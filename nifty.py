@@ -8,7 +8,6 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from sklearn.metrics import r2_score
-from xgboost import XGBRegressor
 
 # ------------------- Technical Indicator Functions -------------------
 
@@ -47,7 +46,7 @@ df['SMA_200'] = df.groupby('Symbol')['Close'].transform(lambda x: x.rolling(wind
 df['RSI'] = df.groupby('Symbol')['Close'].transform(calculate_rsi)
 df['MACD'] = df.groupby('Symbol')['Close'].transform(calculate_macd)
 
-# Fill NaN after rolling calculations
+# Drop rows with NaN from rolling calculations
 df = df.dropna().reset_index(drop=True)
 
 # Encode categorical columns
@@ -75,61 +74,51 @@ y = df['Close']
 scaler = MinMaxScaler()
 X_scaled = scaler.fit_transform(X)
 
-# Split data: stratify by symbol not needed here, but random_state for reproducibility
+# Split data
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
 # ------------------- Train Models -------------------
 
-# Linear Regression baseline
 lr_model = LinearRegression()
 lr_model.fit(X_train, y_train)
 
-# Random Forest
 rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
 rf_model.fit(X_train, y_train)
-
-# XGBoost
-xgb_model = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42, objective='reg:squarederror')
-xgb_model.fit(X_train, y_train)
 
 # ------------------- Predict & Evaluate -------------------
 
 lr_preds = lr_model.predict(X_test)
 rf_preds = rf_model.predict(X_test)
-xgb_preds = xgb_model.predict(X_test)
 
-# Calculate R2 scores only
 lr_r2 = r2_score(y_test, lr_preds)
 rf_r2 = r2_score(y_test, rf_preds)
-xgb_r2 = r2_score(y_test, xgb_preds)
 
-# Predict full dataset close price with XGBoost for visualization
-df['Predicted_Close'] = xgb_model.predict(X_scaled)
+# Predict full dataset for visualization
+df['Predicted_Close_RF'] = rf_model.predict(X_scaled)
+df['Predicted_Close_LR'] = lr_model.predict(X_scaled)
 
 # ------------------- Streamlit Dashboard -------------------
 
 st.set_page_config(layout="wide")
-st.title("📊 Stock Price Prediction Dashboard")
+st.title("Stock Price Prediction Dashboard")
 
 selected_symbol = st.sidebar.selectbox("Select Stock Symbol", sorted(df['Symbol'].unique()))
 
 df_symbol = df[df['Symbol'] == selected_symbol].sort_values('Date')
 
 st.subheader(f"Close Price: Actual vs Predicted ({selected_symbol})")
-st.dataframe(df_symbol[['Date', 'Close', 'Predicted_Close']].tail(10))
+st.dataframe(df_symbol[['Date', 'Close', 'Predicted_Close_RF', 'Predicted_Close_LR']].tail(10))
 
-# Show model performance
 st.markdown("### Model Performance (R² on Test Set)")
 st.write({
     "Linear Regression R²": round(lr_r2, 4),
-    "Random Forest R²": round(rf_r2, 4),
-    "XGBoost R²": round(xgb_r2, 4),
+    "Random Forest R²": round(rf_r2, 4)
 })
 
-# Plot actual vs predicted
 fig, ax = plt.subplots(figsize=(12, 5))
 ax.plot(df_symbol['Date'], df_symbol['Close'], label='Actual Close', color='blue')
-ax.plot(df_symbol['Date'], df_symbol['Predicted_Close'], label='Predicted Close (XGBoost)', color='orange')
+ax.plot(df_symbol['Date'], df_symbol['Predicted_Close_RF'], label='Predicted Close (Random Forest)', color='orange')
+ax.plot(df_symbol['Date'], df_symbol['Predicted_Close_LR'], label='Predicted Close (Linear Regression)', color='green')
 ax.set_xlabel("Date")
 ax.set_ylabel("Price")
 ax.set_title(f"{selected_symbol} Close Price Prediction")
