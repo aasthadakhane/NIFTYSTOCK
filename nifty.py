@@ -81,7 +81,7 @@ xgb_model = XGBRegressor(
 rf_model.fit(X_train, y_train)
 xgb_model.fit(X_train, y_train)
 
-# ---------------------- Evaluate Models (R² Only) -------------------------
+# ---------------------- Evaluate Models -------------------------
 
 rf_preds = rf_model.predict(X_test)
 xgb_preds = xgb_model.predict(X_test)
@@ -106,7 +106,7 @@ st.dataframe(df_selected[['Date', 'Close', 'Predicted_Close']].sort_values('Date
 
 # ---------------------- Metrics -----------------------
 
-st.markdown("### 🔍 Model Evaluation (on Test Set)")
+st.markdown("### 🔍 Model Evaluation (R² Score Only)")
 st.write({
     "Random Forest R²": round(rf_r2, 4),
     "XGBoost R²": round(xgb_r2, 4),
