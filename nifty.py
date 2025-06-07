@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import os
-import joblib
 
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
@@ -57,26 +55,19 @@ y = df['Close']
 scaler = MinMaxScaler()
 X_scaled = scaler.fit_transform(X)
 
-# ---------------------- Load or Train Model ----------------------
+# ---------------------- Train the Model ------------------------
 
-MODEL_PATH = "xgb_model.pkl"
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+model = XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
+model.fit(X_train, y_train)
 
-if os.path.exists(MODEL_PATH):
-    model = joblib.load(MODEL_PATH)
-else:
-    st.warning("Model not found. Training a new one now...")
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-    model = XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
-    model.fit(X_train, y_train)
-    joblib.dump(model, MODEL_PATH)
-    st.success("New model trained and saved as xgb_model.pkl")
-
-# ---------------------- Predict & Visualize ----------------------
-
+# Predict full dataset for dashboard
 df['Predicted_Close'] = model.predict(X_scaled)
 
+# ---------------------- Streamlit App UI ------------------------
+
 st.set_page_config(layout="wide")
-st.title("📊 Global Stock Index: Price Prediction Dashboard")
+st.title("📈 Stock Price Prediction Dashboard")
 
 selected_symbol = st.sidebar.selectbox("Select a Stock Symbol", sorted(df['Symbol'].unique()))
 df_selected = df[df['Symbol'] == selected_symbol]
@@ -85,8 +76,8 @@ st.subheader(f"Predicted vs Actual Close Prices for {selected_symbol}")
 st.dataframe(df_selected[['Date', 'Close', 'Predicted_Close']].sort_values('Date', ascending=False).head(10))
 
 fig, ax = plt.subplots(figsize=(10, 4))
-ax.plot(df_selected['Date'], df_selected['Close'], label="Actual Close", color="royalblue")
-ax.plot(df_selected['Date'], df_selected['Predicted_Close'], label="Predicted Close", color="darkorange")
+ax.plot(df_selected['Date'], df_selected['Close'], label="Actual Close", color="blue")
+ax.plot(df_selected['Date'], df_selected['Predicted_Close'], label="Predicted Close", color="orange")
 ax.set_xlabel("Date")
 ax.set_ylabel("Price")
 ax.set_title(f"{selected_symbol} - Close Price Trend")
