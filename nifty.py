@@ -60,26 +60,27 @@ X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, 
 
 # ---------------------- Train Models ----------------------------
 
-rf_model = RandomForestRegressor(
-    n_estimators=100,
-    max_depth=None,
-    min_samples_split=2,
-    min_samples_leaf=1,
-    random_state=42
-)
+with st.spinner("Training models..."):
+    rf_model = RandomForestRegressor(
+        n_estimators=100,
+        max_depth=None,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        random_state=42
+    )
 
-xgb_model = XGBRegressor(
-    n_estimators=100,
-    learning_rate=0.1,
-    max_depth=3,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    objective='reg:squarederror',
-    random_state=42
-)
+    xgb_model = XGBRegressor(
+        n_estimators=100,
+        learning_rate=0.1,
+        max_depth=3,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        objective='reg:squarederror',
+        random_state=42
+    )
 
-rf_model.fit(X_train, y_train)
-xgb_model.fit(X_train, y_train)
+    rf_model.fit(X_train, y_train)
+    xgb_model.fit(X_train, y_train)
 
 # ---------------------- Evaluate Models -------------------------
 
@@ -89,8 +90,8 @@ xgb_preds = xgb_model.predict(X_test)
 rf_r2 = r2_score(y_test, rf_preds)
 xgb_r2 = r2_score(y_test, xgb_preds)
 
-rf_rmse = mean_squared_error(y_test, rf_preds, squared=False if 'squared' in mean_squared_error.__code__.co_varnames else True) ** 0.5
-xgb_rmse = mean_squared_error(y_test, xgb_preds, squared=False if 'squared' in mean_squared_error.__code__.co_varnames else True) ** 0.5
+rf_rmse = mean_squared_error(y_test, rf_preds, squared=False)
+xgb_rmse = mean_squared_error(y_test, xgb_preds, squared=False)
 
 # Predict full dataset with XGBoost
 df['Predicted_Close'] = xgb_model.predict(X_scaled)
@@ -100,7 +101,8 @@ df['Predicted_Close'] = xgb_model.predict(X_scaled)
 st.set_page_config(layout="wide")
 st.title("📈 Stock Price Prediction Dashboard")
 
-selected_symbol = st.sidebar.selectbox("Select a Stock Symbol", sorted(df['Symbol'].unique()))
+symbols = sorted(df['Symbol'].unique())
+selected_symbol = st.sidebar.selectbox("Select a Stock Symbol", symbols)
 df_selected = df[df['Symbol'] == selected_symbol]
 
 st.subheader(f"Predicted vs Actual Close Prices for {selected_symbol}")
@@ -149,5 +151,5 @@ ax.set_xlabel("Date")
 ax.set_ylabel("Price")
 ax.set_title(f"{selected_symbol} - Close Price Trend")
 ax.legend()
-plt.xticks(rotation=45)
+fig.autofmt_xdate()
 st.pyplot(fig)
