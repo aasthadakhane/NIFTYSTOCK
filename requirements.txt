@@ -6,5 +6,4 @@ scikit-learn
 xgboost
 streamlit
 squared
-XGBRegressor
-mean_squared_error
+sklearn.metrics
