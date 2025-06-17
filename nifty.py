@@ -115,7 +115,7 @@ st.markdown("### Technical Indicators")
 st.line_chart(df_selected.set_index('Date')[['Z_Score', 'Rolling_Mean_20', 'Rolling_Std_20']])
 
 # ---------------------- Feature Engineering Visuals ------------------
-st.markdown("### 📊 Feature Engineering Visuals")
+st.markdown("Feature Engineering Visuals")
 
 # Price Change
 st.subheader("Daily Price Change")
