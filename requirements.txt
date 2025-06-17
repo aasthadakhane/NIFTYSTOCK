@@ -7,3 +7,4 @@ xgboost
 streamlit
 squared
 XGBRegressor
+mean_squared_error
