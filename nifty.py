@@ -66,7 +66,7 @@ r2_scores = {
 rmse_scores = {
     "Linear Regression RMSE": round(mean_squared_error(y_test, y_pred_lr, squared=False), 4),
     "Random Forest RMSE": round(mean_squared_error(y_test, y_pred_rf, squared=False), 4),
-    "XGBoost RMSE": round(mean_squared_error(y_test, y_pred_xgb, squared=False), 4),
+    "XGBoost RMSE": round(mean_squared_error(y_test, y_pred_xgb, squared=False)),
 }
 
 # ---------------------- Save Models ------------------
