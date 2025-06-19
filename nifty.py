@@ -80,6 +80,21 @@ def add_indicators(df):
 
     df['CVI'] = df['Volume'].cumsum()
 
+    df['Close_Lag_1'] = df['Close'].shift(1)
+    df['Close_Lag_5'] = df['Close'].shift(5)
+    df['Close_Lag_10'] = df['Close'].shift(10)
+
+    df['Rolling_Mean_5'] = df['Close'].rolling(5).mean()
+    df['Rolling_Mean_10'] = df['Close'].rolling(10).mean()
+
+    df['Return_5'] = df['Close'].pct_change(5)
+    df['Return_10'] = df['Close'].pct_change(10)
+
+    df['Year'] = df['Date'].dt.year
+    df['Month'] = df['Date'].dt.month
+    df['Day'] = df['Date'].dt.day
+    df['DayOfWeek'] = df['Date'].dt.dayofweek
+
     return df.dropna()
 
 df = add_indicators(df)
@@ -147,14 +162,12 @@ with tab2:
     st.subheader("RSI and Bollinger Bands")
     fig2, ax2 = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
 
-    # Bollinger Bands
     ax2[0].plot(df_selected['Date'], df_selected['Close'], label='Close', color='blue')
     ax2[0].plot(df_selected['Date'], df_selected['BB_Upper'], label='Upper Band', linestyle='--', color='red')
     ax2[0].plot(df_selected['Date'], df_selected['BB_Lower'], label='Lower Band', linestyle='--', color='green')
     ax2[0].legend()
     ax2[0].set_title("Bollinger Bands")
 
-    # RSI
     ax2[1].plot(df_selected['Date'], df_selected['RSI'], color='purple')
     ax2[1].axhline(70, linestyle='--', color='red')
     ax2[1].axhline(30, linestyle='--', color='green')
@@ -187,7 +200,8 @@ with tab4:
     filtered_df = df_selected.loc[mask]
     st.dataframe(filtered_df[[
         'Date', 'Close', 'Predicted_Close', 'RSI', 'SMA_50', 'EMA_20', 'ATR_14', 'ROC',
-        'Williams_%R', 'OBV', 'Exp_Volatility'
+        'Williams_%R', 'OBV', 'Exp_Volatility', 'Momentum', 'Return_5', 'Return_10',
+        'Rolling_Mean_5', 'Rolling_Mean_10', 'Close_Lag_1', 'Close_Lag_5', 'Close_Lag_10'
     ]], use_container_width=True)
 
 # Footer
