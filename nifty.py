@@ -45,6 +45,7 @@ def add_indicators(df):
 
     df['Daily_Return'] = df['Close'].pct_change()
     df['Volatility'] = df['Daily_Return'].rolling(14).std()
+    df['Exp_Volatility'] = df['Daily_Return'].ewm(span=14).std()
 
     df['EMA_20'] = df['Close'].ewm(span=20).mean()
     df['EMA_50'] = df['Close'].ewm(span=50).mean()
@@ -55,6 +56,7 @@ def add_indicators(df):
     df['BB_Lower'] = rolling_mean - (rolling_std * 2)
 
     df['Momentum'] = df['Close'] - df['Close'].shift(10)
+    df['ROC'] = df['Close'].pct_change(periods=10) * 100
 
     obv = [0]
     for i in range(1, len(df)):
@@ -66,6 +68,18 @@ def add_indicators(df):
             obv.append(obv[-1])
     df['OBV'] = obv
 
+    df['H-L'] = df['High'] - df['Low']
+    df['H-PC'] = abs(df['High'] - df['Close'].shift(1))
+    df['L-PC'] = abs(df['Low'] - df['Close'].shift(1))
+    df['TR'] = df[['H-L', 'H-PC', 'L-PC']].max(axis=1)
+    df['ATR_14'] = df['TR'].rolling(window=14).mean()
+
+    high_14 = df['High'].rolling(14).max()
+    low_14 = df['Low'].rolling(14).min()
+    df['Williams_%R'] = (high_14 - df['Close']) / (high_14 - low_14) * -100
+
+    df['CVI'] = df['Volume'].cumsum()
+
     return df.dropna()
 
 df = add_indicators(df)
@@ -76,7 +90,8 @@ df['Symbol'] = label.fit_transform(df['Symbol'])
 df['Category'] = label.fit_transform(df['Category'])
 
 # Feature and target
-drop_cols = ['Close', 'Adj Close', 'Volume', 'Date', 'Price_Range', 'Cumulative_Return', 'Average_Price']
+drop_cols = ['Close', 'Adj Close', 'Volume', 'Date', 'Price_Range', 'Cumulative_Return', 'Average_Price',
+             'TR', 'H-L', 'H-PC', 'L-PC']
 X = df.drop(columns=drop_cols, errors='ignore')
 y = df['Close']
 
@@ -170,7 +185,10 @@ with tab4:
 
     mask = (df_selected['Date'] >= pd.to_datetime(start_date)) & (df_selected['Date'] <= pd.to_datetime(end_date))
     filtered_df = df_selected.loc[mask]
-    st.dataframe(filtered_df[['Date', 'Close', 'Predicted_Close', 'RSI', 'SMA_50', 'EMA_20', 'BB_Upper', 'BB_Lower']], use_container_width=True)
+    st.dataframe(filtered_df[[
+        'Date', 'Close', 'Predicted_Close', 'RSI', 'SMA_50', 'EMA_20', 'ATR_14', 'ROC',
+        'Williams_%R', 'OBV', 'Exp_Volatility'
+    ]], use_container_width=True)
 
 # Footer
 st.markdown("""
